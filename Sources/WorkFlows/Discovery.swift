@@ -1,7 +1,15 @@
-import Foundation
+import AppKit
 
 /// Helpers that ask the system what's available, to populate the pickers in the editor.
 enum Discovery {
+    /// Regular (Dock-visible) apps that are running right now.
+    static func runningApps() async -> [Choice] {
+        let names = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.bundleIdentifier != Bundle.main.bundleIdentifier }
+            .compactMap(\.localizedName)
+        return Set(names).sorted().map { Choice(label: $0, value: $0) }
+    }
+
     static func pairedBluetoothDevices() async -> [Choice] {
         let json = await Shell.tool("blueutil", ["--paired", "--format", "json"])
         if json.ok,

@@ -188,6 +188,15 @@ struct StepRow: View {
                 }
             }
 
+        case .quitApp:
+            HStack {
+                TextField("App name, e.g. Slack", text: $step.primary)
+                ChoiceMenu(title: "Running apps", loader: Discovery.runningApps) { step.primary = $0.value }
+            }
+
+        case .disconnectVPN:
+            EmptyView()
+
         case .openURL:
             TextField("https://outlook.office.com/mail", text: $step.primary)
             Picker("Browser", selection: $step.secondary) {

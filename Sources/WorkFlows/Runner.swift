@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 enum StepOutcome {
     case ok
@@ -18,6 +18,13 @@ enum StepExecutor {
         case .openApp:
             guard !primary.isEmpty else { return notConfigured }
             return outcome(await Shell.run("/usr/bin/open", ["-a", primary]))
+
+        case .quitApp:
+            guard !primary.isEmpty else { return notConfigured }
+            return await quitApp(named: primary)
+
+        case .disconnectVPN:
+            return await disconnectTunnelblick()
 
         case .openURL:
             guard !primary.isEmpty else { return notConfigured }
@@ -55,6 +62,32 @@ enum StepExecutor {
         if result.ok { return .ok }
         let message = result.output.isEmpty ? "exit code \(result.status)" : String(result.output.prefix(200))
         return .failed(message)
+    }
+
+    /// Asks every running copy of the app to quit (like ⌘Q) and waits briefly for it to go.
+    /// Matches by display name or bundle id. An app that isn't running counts as done.
+    private static func quitApp(named name: String) async -> StepOutcome {
+        let matches = NSWorkspace.shared.runningApplications.filter {
+            $0.localizedName?.caseInsensitiveCompare(name) == .orderedSame
+                || $0.bundleIdentifier?.caseInsensitiveCompare(name) == .orderedSame
+        }
+        guard !matches.isEmpty else { return .ok }
+
+        for app in matches { app.terminate() }
+        for _ in 0..<20 {
+            if matches.allSatisfy(\.isTerminated) { return .ok }
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        return .failed("still running after 10s (it may be asking to save changes)")
+    }
+
+    /// Checked first so AppleScript doesn't launch Tunnelblick just to tell it to disconnect.
+    private static func disconnectTunnelblick() async -> StepOutcome {
+        let running = NSWorkspace.shared.runningApplications.contains {
+            $0.bundleIdentifier == "net.tunnelblick.tunnelblick"
+        }
+        guard running else { return .ok }
+        return outcome(await Shell.run("/usr/bin/osascript", ["-e", "tell application \"Tunnelblick\" to disconnect all"]))
     }
 
     private static func connectBluetooth(_ address: String) async -> StepOutcome {

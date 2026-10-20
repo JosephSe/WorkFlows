@@ -28,6 +28,16 @@ final class Store: ObservableObject {
         } else {
             workflows = Workflow.defaults
         }
+
+        // "Stop Work" shipped after the first release: add it once to existing installs, never again,
+        // so deleting it sticks.
+        let flag = "seededStopWork"
+        if !UserDefaults.standard.bool(forKey: flag) {
+            UserDefaults.standard.set(true, forKey: flag)
+            if !workflows.contains(where: { $0.name == Workflow.stopWork.name }) {
+                workflows.append(Workflow.stopWork)
+            }
+        }
     }
 
     private func save() {

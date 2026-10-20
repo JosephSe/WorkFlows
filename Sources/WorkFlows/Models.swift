@@ -1,13 +1,15 @@
 import Foundation
 
 enum StepKind: String, Codable, CaseIterable, Identifiable {
-    case openApp, openURL, bluetoothConnect, audioOutput, setVolume, runShortcut, runShell, wait
+    case openApp, quitApp, disconnectVPN, openURL, bluetoothConnect, audioOutput, setVolume, runShortcut, runShell, wait
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .openApp: "Open App"
+        case .quitApp: "Quit App"
+        case .disconnectVPN: "Disconnect Tunnelblick VPN"
         case .openURL: "Open URL"
         case .bluetoothConnect: "Connect Bluetooth Device"
         case .audioOutput: "Set Audio Output"
@@ -21,6 +23,8 @@ enum StepKind: String, Codable, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .openApp: "app.badge"
+        case .quitApp: "xmark.app"
+        case .disconnectVPN: "lock.open"
         case .openURL: "globe"
         case .bluetoothConnect: "headphones"
         case .audioOutput: "speaker.wave.2"
@@ -33,6 +37,8 @@ enum StepKind: String, Codable, CaseIterable, Identifiable {
 
     var hint: String? {
         switch self {
+        case .quitApp: "Asks the app to quit, like ⌘Q. Apps with unsaved changes may still prompt and stay open. Not running counts as done."
+        case .disconnectVPN: "Disconnects every active Tunnelblick connection. Does nothing if Tunnelblick isn't running. macOS asks once to let WorkFlows control Tunnelblick."
         case .bluetoothConnect: "Needs blueutil: brew install blueutil"
         case .audioOutput: "Needs switchaudio-osx: brew install switchaudio-osx. Retries for ~18s while the speaker connects."
         case .runShortcut: "For Focus / Do Not Disturb, make a Shortcut with the “Set Focus” action and pick it here."
@@ -43,6 +49,7 @@ enum StepKind: String, Codable, CaseIterable, Identifiable {
 
 /// One action in a workflow. The three generic fields are interpreted per `kind`:
 ///   openApp          primary = app name
+///   quitApp          primary = app name
 ///   openURL          primary = URL, secondary = browser app name ("" = system default)
 ///   bluetoothConnect primary = device address, secondary = display name
 ///   audioOutput      primary = output device name
@@ -69,6 +76,8 @@ struct Step: Identifiable, Codable, Hashable {
     var summary: String {
         switch kind {
         case .openApp: "Open \(primary)"
+        case .quitApp: "Quit \(primary)"
+        case .disconnectVPN: "Disconnect Tunnelblick VPN"
         case .openURL: secondary.isEmpty ? "Open \(primary)" : "Open \(primary) in \(secondary)"
         case .bluetoothConnect: "Connect \(secondary.isEmpty ? primary : secondary)"
         case .audioOutput: "Audio output → \(primary)"
@@ -85,6 +94,14 @@ struct Workflow: Identifiable, Codable, Hashable {
     var name: String
     var symbol = "bolt.fill"
     var steps: [Step] = []
+
+    static let stopWork = Workflow(name: "Stop Work", symbol: "moon.fill", steps: [
+        Step(kind: .quitApp, primary: "Microsoft Teams"),
+        Step(kind: .quitApp, primary: "Slack"),
+        Step(kind: .disconnectVPN),
+        Step(kind: .quitApp, isEnabled: false, primary: "Microsoft Outlook"),
+        Step(kind: .runShortcut, isEnabled: false, primary: "Personal Focus"),
+    ])
 
     /// Seeded on first launch. Steps that need machine-specific values start disabled.
     static let defaults: [Workflow] = [
@@ -103,6 +120,7 @@ struct Workflow: Identifiable, Codable, Hashable {
             Step(kind: .audioOutput, isEnabled: false),
             Step(kind: .setVolume, amount: 50),
         ]),
+        stopWork,
     ]
 }
 
