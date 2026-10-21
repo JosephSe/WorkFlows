@@ -139,11 +139,13 @@ final class Runner: ObservableObject {
 
     var isRunning: Bool { runningName != nil }
 
-    func run(_ workflow: Workflow) {
+    /// `onFinish` runs after the last step and the completion notification, or right away if nothing runs.
+    func run(_ workflow: Workflow, onFinish: (() -> Void)? = nil) {
         guard !isRunning else { return }
         let steps = workflow.steps.filter(\.isEnabled)
         guard !steps.isEmpty else {
             log = [LogLine(level: .failed, text: "“\(workflow.name)” has no enabled steps")]
+            onFinish?()
             return
         }
 
@@ -175,7 +177,8 @@ final class Runner: ObservableObject {
             lastSummary = summary
             runningName = nil
             task = nil
-            Self.notify(summary)
+            await Self.notify(summary)
+            onFinish?()
         }
     }
 
@@ -183,10 +186,8 @@ final class Runner: ObservableObject {
         task?.cancel()
     }
 
-    private static func notify(_ text: String) {
+    private static func notify(_ text: String) async {
         let safe = text.replacingOccurrences(of: "\\", with: "").replacingOccurrences(of: "\"", with: "'")
-        Task {
-            _ = await Shell.run("/usr/bin/osascript", ["-e", "display notification \"\(safe)\" with title \"WorkFlows\""])
-        }
+        _ = await Shell.run("/usr/bin/osascript", ["-e", "display notification \"\(safe)\" with title \"WorkFlows\""])
     }
 }

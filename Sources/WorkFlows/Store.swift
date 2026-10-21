@@ -40,12 +40,25 @@ final class Store: ObservableObject {
         }
     }
 
+    private var syncedNames: [String]?
+    private static let launcherQueue = DispatchQueue(label: "workflows.launchers")
+
     private func save() {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let data = try? encoder.encode(workflows) {
             try? data.write(to: fileURL, options: .atomic)
         }
+        syncLaunchers()
+    }
+
+    /// Keeps the Spotlight launcher apps in step with the workflow list (only when ids/names change).
+    func syncLaunchers() {
+        let names = workflows.map { "\($0.id)\($0.name)" }
+        guard names != syncedNames else { return }
+        syncedNames = names
+        let snapshot = workflows
+        Self.launcherQueue.async { Launchers.sync(snapshot) }
     }
 }
 
