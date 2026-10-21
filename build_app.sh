@@ -29,6 +29,13 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key><string>WorkFlows</string>
+            <key>CFBundleURLSchemes</key><array><string>workflows</string></array>
+        </dict>
+    </array>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>WorkFlows connects your Bluetooth speaker or headphones when a workflow runs.</string>
     <key>NSAppleEventsUsageDescription</key>
